@@ -1,0 +1,31 @@
+#include <DHT11.h>
+
+#define DHTPIN 2  // Pin connected to DHT11
+#define BUZZER 4  // Pin connected to buzzer
+#define ESP 6     // Pin connected to ESP
+
+DHT11 dht11(DHTPIN);  // Create DHT11 object
+
+void setup() {
+    Serial.begin(9600);  // Start Serial Monitor
+    pinMode(BUZZER, OUTPUT);
+    pinMode(ESP, OUTPUT);
+    digitalWrite(BUZZER, LOW);  // Ensure buzzer is off at startup
+    digitalWrite(ESP, 0);      // Ensure LED is off at startup
+}
+
+void loop() {
+    int temperature = dht11.readTemperature();  // Read temperature
+
+    Serial.println(temperature);  // Print temperature only
+
+    if (temperature > 70) {
+        digitalWrite(BUZZER, HIGH);  // Turn buzzer ON
+        digitalWrite(ESP, 1);  
+    } else {
+        digitalWrite(BUZZER, LOW);   // Turn buzzer OFF
+        digitalWrite(ESP, 0); 
+    }
+
+    delay(2000);  // Wait 2 seconds before next reading
+}
