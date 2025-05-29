@@ -1,0 +1,148 @@
+#include <WiFi.h>
+#include <ESP_Mail_Client.h>
+#include <SD.h>
+
+// Wi-Fi credentials
+#define WIFI_SSID "chanakran"
+#define WIFI_PASSWORD "thaweerat"
+
+// SMTP server settings
+#define SMTP_HOST "smtp.gmail.com"
+#define SMTP_PORT 465
+
+// Email credentials
+#define AUTHOR_EMAIL "breakertripnotify@gmail.com"
+#define AUTHOR_PASSWORD "vsuozliufuxjgxgh"
+
+// Recipient email
+#define RECIPIENT_EMAIL "chanon.ttc@hotmail.com"
+
+// DHT setup
+
+// SMTPSession object
+SMTPSession smtp;
+
+void smtpCallback(SMTP_Status status);
+bool sendEmail(const char *message);
+void ensureWiFi();
+
+void setup() {
+  Serial.begin(115200);
+
+  // Connect to Wi-Fi
+  WiFi.begin(WIFI_SSID, WIFI_PASSWORD);
+  Serial.print("Connecting to Wi-Fi");
+  while (WiFi.status() != WL_CONNECTED) {
+    Serial.print(".");
+    delay(300);
+  }
+  Serial.println("\nConnected to Wi-Fi.");
+  Serial.print("IP Address: ");
+  Serial.println(WiFi.localIP());
+
+  // Enable SMTP debugging
+  smtp.debug(1);
+
+  // Assign the callback function
+  smtp.callback(smtpCallback);
+
+  // Set pins 16, 17, 18, 23, and 24
+  pinMode(17, INPUT);
+  pinMode(18, INPUT);
+  pinMode(19, INPUT);
+  pinMode(23, INPUT);
+}
+
+void loop() {
+  ensureWiFi();
+  if (digitalRead(23) == 1) {
+    sendEmail("Overheat");
+
+
+
+  // Check breaker trip signals and send respective emails
+  if (digitalRead(17) == 0) {
+    sendEmail("Alert: B1 tripped!");
+  } else if (digitalRead(18) == 0) {
+    sendEmail("Alert: B2 tripped!");
+  } else if (digitalRead(19) == 0) {
+    sendEmail("Alert: B3 tripped!");
+  }
+
+  delay(2000); // Delay for stability
+}
+
+bool sendEmail(const char *message) {
+  // Configure email session
+  Session_Config config;
+  config.server.host_name = SMTP_HOST;
+  config.server.port = SMTP_PORT;
+  config.login.email = AUTHOR_EMAIL;
+  config.login.password = AUTHOR_PASSWORD;
+  config.time.ntp_server = F("pool.ntp.org,time.nist.gov");
+  config.time.gmt_offset = 7;
+  config.time.day_light_offset = 0;
+
+  // Create an email message
+  SMTP_Message email;
+  email.sender.name = F("BREAKERTRIP Alert");
+  email.sender.email = AUTHOR_EMAIL;
+  email.subject = F("ESP32 Alert Notification");
+  email.addRecipient(F("Tee Chanakarn"), RECIPIENT_EMAIL);
+  email.text.content = message;
+  email.text.charSet = "us-ascii";
+  email.text.transfer_encoding = Content_Transfer_Encoding::enc_7bit;
+
+  // Connect to SMTP server
+  if (!smtp.connect(&config)) {
+    Serial.printf("Connection Error: %s\n", smtp.errorReason().c_str());
+    return false;
+  }
+
+  // Send the email
+  if (!MailClient.sendMail(&smtp, &email)) {
+    Serial.printf("Error Sending Email: %s\n", smtp.errorReason().c_str());
+    return false;
+  }
+
+  Serial.println("Email sent successfully!");
+  return true;
+}
+
+// Ensure Wi-Fi connection
+void ensureWiFi() {
+  if (WiFi.status() != WL_CONNECTED) {
+    Serial.println("Reconnecting to Wi-Fi...");
+    WiFi.begin(WIFI_SSID, WIFI_PASSWORD);
+    unsigned long startTime = millis();
+    while (WiFi.status() != WL_CONNECTED && millis() - startTime < 10000) { // 10 seconds timeout
+      delay(300);
+      Serial.print(".");
+    }
+    if (WiFi.status() == WL_CONNECTED) {
+      Serial.println("\nReconnected to Wi-Fi!");
+    } else {
+      Serial.println("\nFailed to reconnect to Wi-Fi.");
+    }
+  }
+}
+
+// Callback function for email status
+void smtpCallback(SMTP_Status status) {
+  Serial.println(status.info());
+
+  if (status.success()) {
+    Serial.println("Email sent successfully!");
+    Serial.printf("Completed: %d\nFailed: %d\n", status.completedCount(), status.failedCount());
+    for (size_t i = 0; i < smtp.sendingResult.size(); i++) {
+      SMTP_Result result = smtp.sendingResult.getItem(i);
+      Serial.printf("Message %d:\n", i + 1);
+      Serial.printf("  Status: %s\n", result.completed ? "Success" : "Failed");
+      Serial.printf("  Recipient: %s\n", result.recipients.c_str());
+      Serial.printf("  Subject: %s\n", result.subject.c_str());
+    }
+    smtp.sendingResult.clear();
+  } else {
+    Serial.println("Email failed to send.");
+  }
+}
