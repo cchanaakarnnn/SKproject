@@ -1,0 +1,98 @@
+#include <Wire.h>
+#include <LiquidCrystal_I2C.h>
+#include <DHT11.h>
+
+// Define I2C address for LCD
+#define I2C_ADDR 0x27
+LiquidCrystal_I2C lcd(I2C_ADDR, 16, 2);
+
+// DHT11 setup
+
+
+// Constants and Variables
+#define setpoint 2000
+
+const int analogInPin = A0;  // Analog input pin for potentiometer
+const int analogOutPin = 9;  // Analog output pin for the LED
+const int buzzerPin = 7;     // Digital pin for buzzer
+int ValueB1, ValueB1_, ValueB2, ValueB2_, ValueB3, ValueB3_ = 0;
+
+void setup() {
+  // Initialize serial communication (for debugging)
+  Serial.begin(9600);
+
+  // Initialize LCD
+  lcd.begin(16, 2);
+  lcd.backlight();
+  lcd.home();
+  lcd.setCursor(0, 0);
+  lcd.print("B1:");
+  lcd.setCursor(3, 0);
+  lcd.print("Nor1");
+  lcd.setCursor(0, 1);
+  lcd.print("B2:");
+  lcd.setCursor(3, 1);
+  lcd.print("Nor2");
+  lcd.setCursor(9, 0);
+  lcd.print("B3:");
+  lcd.setCursor(12, 0);
+  lcd.print("Nor3");
+
+  // Set up the buzzer pin
+  pinMode(buzzerPin, OUTPUT);
+  pinMode(10, INPUT);
+  digitalWrite(buzzerPin, 0);
+}
+
+void loop() {
+  // Read analog inputs and update values
+  ValueB1 = analogRead(A0) + analogRead(A1);
+  ValueB2 = analogRead(A2) + analogRead(A3);
+  ValueB3 = analogRead(A6) + analogRead(A7);
+
+  // Clear digital output pins
+  digitalWrite(2, 1);
+  digitalWrite(3, 1);
+  digitalWrite(4, 1);
+
+  // Check setpoint conditions and update LCD
+  if (ValueB1 < setpoint) {
+    lcd.setCursor(3, 0);
+    lcd.print("Trip");
+    lcd.setCursor(3, 1);
+    lcd.print("Nor2");
+    lcd.setCursor(12, 0);
+    lcd.print("Nor3");
+    digitalWrite(2, 0);
+    digitalWrite(3, 1);
+    digitalWrite(4, 1);
+    delay(3000);
+  } else if (ValueB2 < setpoint) {
+    lcd.setCursor(3, 0);
+    lcd.print("Nor1");
+    lcd.setCursor(3, 1);
+    lcd.print("Trip");
+    lcd.setCursor(12, 0);
+    lcd.print("Nor3");
+    digitalWrite(2, 1);
+    digitalWrite(3, 0);
+    digitalWrite(4, 1);
+    delay(3000);
+  } else if (ValueB3 < setpoint) {
+    lcd.setCursor(3, 0);
+    lcd.print("Nor1");
+    lcd.setCursor(3, 1);
+    lcd.print("Nor2");
+    lcd.setCursor(12, 0);
+    lcd.print("Trip");
+    digitalWrite(2, 1);
+    digitalWrite(3, 1);
+    digitalWrite(4, 0);
+    delay(3000);
+  }
+
+  // Read temperature from DHT11
+  
+
+  // Delay for stability
+}                                                              
